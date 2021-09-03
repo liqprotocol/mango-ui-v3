@@ -2,7 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import FloatingElement from './FloatingElement'
 import { ElementTitle } from './styles'
 import useMangoStore, { mangoClient } from '../stores/useMangoStore'
-import { i80f48ToPercent, formatUsdValue } from '../utils/index'
+import { i80f48ToPercent, formatUsdValue, floorToDecimal } from '../utils/index'
 import Button, { LinkButton } from './Button'
 import Tooltip from './Tooltip'
 import SideBadge from './SideBadge'
@@ -40,7 +40,7 @@ const settlePnl = async (perpMarket: PerpMarket, perpAccount: PerpAccount) => {
       mangoCache.priceCache[marketIndex].price,
       wallet
     )
-    actions.fetchMangoAccounts()
+    actions.reloadMangoAccount()
     notify({
       title: 'Successfully settled PNL',
       description: '',
@@ -96,9 +96,14 @@ export default function MarketPosition() {
     return getMarketIndexBySymbol(mangoGroupConfig, baseSymbol)
   }, [mangoGroupConfig, baseSymbol])
 
-  let perpAccount
+  let perpAccount, perpPnl
   if (marketName.includes('PERP') && mangoAccount) {
     perpAccount = mangoAccount.perpAccounts[marketIndex]
+    perpPnl = perpAccount.getPnl(
+      mangoGroup.perpMarkets[marketIndex],
+      mangoGroupCache.perpMarketCache[marketIndex],
+      mangoGroupCache.priceCache[marketIndex].price
+    )
   }
 
   const handleSizeClick = (size) => {
@@ -123,7 +128,7 @@ export default function MarketPosition() {
   return selectedMarket instanceof PerpMarket ? (
     <FloatingElement showConnect>
       <div className={!connected ? 'filter blur-sm' : null}>
-        <ElementTitle>Position</ElementTitle>
+        <ElementTitle>Position: {marketConfig.name} </ElementTitle>
         <div className={`flex items-center justify-between pb-3`}>
           <div className="font-normal text-th-fgd-3 leading-4">Side</div>
           {isLoading ? (
@@ -175,8 +180,10 @@ export default function MarketPosition() {
               <DataLoader />
             ) : perpAccount ? (
               formatUsdValue(
-                selectedMarket.baseLotsToNumber(perpAccount.basePosition) *
-                  mangoGroup.getPrice(marketIndex, mangoGroupCache).toNumber()
+                Math.abs(
+                  selectedMarket.baseLotsToNumber(perpAccount.basePosition) *
+                    mangoGroup.getPrice(marketIndex, mangoGroupCache).toNumber()
+                )
               )
             ) : (
               0
@@ -227,19 +234,20 @@ export default function MarketPosition() {
               Unsettled PnL
             </Tooltip.Content>
           </Tooltip>
-          <div className={`flex items-center text-th-fgd-1`}>
+          <div
+            className={`flex items-center ${
+              perpPnl?.gt(ZERO_I80F48)
+                ? 'text-th-green'
+                : perpPnl?.lt(ZERO_I80F48)
+                ? 'text-th-red'
+                : 'text-th-fgd-1'
+            }`}
+          >
             {isLoading ? (
               <DataLoader />
             ) : perpAccount ? (
               formatUsdValue(
-                +nativeI80F48ToUi(
-                  perpAccount.getPnl(
-                    mangoGroup.perpMarkets[marketIndex],
-                    mangoGroupCache.perpMarketCache[marketIndex],
-                    mangoGroupCache.priceCache[marketIndex].price
-                  ),
-                  marketConfig.quoteDecimals
-                )
+                +nativeI80F48ToUi(perpPnl, marketConfig.quoteDecimals)
               )
             ) : (
               '0'
@@ -250,17 +258,7 @@ export default function MarketPosition() {
               <LinkButton
                 onClick={() => handleSettlePnl(selectedMarket, perpAccount)}
                 className="ml-2 text-th-primary text-xs disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:underline"
-                disabled={
-                  perpAccount
-                    ? perpAccount
-                        .getPnl(
-                          mangoGroup.perpMarkets[marketIndex],
-                          mangoGroupCache.perpMarketCache[marketIndex],
-                          mangoGroupCache.priceCache[marketIndex].price
-                        )
-                        .eq(ZERO_I80F48)
-                    : true
-                }
+                disabled={perpAccount ? perpPnl.eq(ZERO_I80F48) : true}
               >
                 Settle
               </LinkButton>
@@ -340,7 +338,7 @@ export default function MarketPosition() {
                             deposit.gt(borrow) ? (
                               deposit.toFixed()
                             ) : (
-                              borrow.toFixed()
+                              `-${borrow.toFixed()}`
                             )
                           ) : (
                             0
@@ -357,14 +355,15 @@ export default function MarketPosition() {
                           {isLoading ? (
                             <DataLoader />
                           ) : mangoAccount ? (
-                            nativeI80F48ToUi(
-                              mangoAccount.getAvailableBalance(
-                                mangoGroup,
-                                mangoGroupCache,
-                                tokenIndex
-                              ),
-                              mangoGroup.tokens[tokenIndex].decimals
-                            ).toFixed(
+                            floorToDecimal(
+                              nativeI80F48ToUi(
+                                mangoAccount.getAvailableBalance(
+                                  mangoGroup,
+                                  mangoGroupCache,
+                                  tokenIndex
+                                ),
+                                mangoGroup.tokens[tokenIndex].decimals
+                              ).toNumber(),
                               getTokenBySymbol(mangoGroupConfig, symbol)
                                 .decimals
                             )

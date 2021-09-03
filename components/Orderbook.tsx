@@ -3,7 +3,7 @@ import styled from '@emotion/styled'
 import { css, keyframes } from '@emotion/react'
 import useInterval from '../hooks/useInterval'
 import usePrevious from '../hooks/usePrevious'
-import { isEqual, getDecimalCount } from '../utils/'
+import { isEqual, getDecimalCount, usdFormatter } from '../utils/'
 import {
   ArrowUpIcon,
   ArrowDownIcon,
@@ -15,6 +15,7 @@ import { ElementTitle } from './styles'
 import useMangoStore from '../stores/useMangoStore'
 import Tooltip from './Tooltip'
 import FloatingElement from './FloatingElement'
+import { useOpenOrders } from '../hooks/useOpenOrders'
 
 const Line = styled.div<any>`
   text-align: ${(props) => (props.invert ? 'left' : 'right')};
@@ -98,10 +99,16 @@ export default function Orderbook({ depth = 8 }) {
   const groupConfig = useMangoStore((s) => s.selectedMangoGroup.config)
   const marketConfig = useMangoStore((s) => s.selectedMarket.config)
   const orderbook = useMangoStore((s) => s.selectedMarket.orderBook)
+  const market = useMangoStore((s) => s.selectedMarket.current)
   const markPrice = useMarkPrice()
+  const openOrders = useOpenOrders()
+  const openOrderPrices = openOrders?.length
+    ? openOrders.map(({ order }) => order.price)
+    : []
 
   const currentOrderbookData = useRef(null)
   const lastOrderbookData = useRef(null)
+  const previousDepth = usePrevious(depth)
 
   const [orderbookData, setOrderbookData] = useState(null)
   const [defaultLayout, setDefaultLayout] = useState(true)
@@ -111,7 +118,8 @@ export default function Orderbook({ depth = 8 }) {
     if (
       !currentOrderbookData.current ||
       JSON.stringify(currentOrderbookData.current) !==
-        JSON.stringify(lastOrderbookData.current)
+        JSON.stringify(lastOrderbookData.current) ||
+      previousDepth !== depth
     ) {
       const bids = orderbook?.bids || []
       const asks = orderbook?.asks || []
@@ -257,6 +265,8 @@ export default function Orderbook({ depth = 8 }) {
                         maxSizePercent,
                       }) => (
                         <OrderbookRow
+                          market={market}
+                          hasOpenOrder={openOrderPrices.includes(price)}
                           key={price + ''}
                           price={price}
                           size={displayCumulativeSize ? cumulativeSize : size}
@@ -278,6 +288,8 @@ export default function Orderbook({ depth = 8 }) {
                         maxSizePercent,
                       }) => (
                         <OrderbookRow
+                          market={market}
+                          hasOpenOrder={openOrderPrices.includes(price)}
                           invert
                           key={price + ''}
                           price={price}
@@ -360,6 +372,8 @@ export default function Orderbook({ depth = 8 }) {
                     maxSizePercent,
                   }) => (
                     <OrderbookRow
+                      market={market}
+                      hasOpenOrder={openOrderPrices.includes(price)}
                       key={price + ''}
                       price={price}
                       size={displayCumulativeSize ? cumulativeSize : size}
@@ -388,6 +402,8 @@ export default function Orderbook({ depth = 8 }) {
                     maxSizePercent,
                   }) => (
                     <OrderbookRow
+                      market={market}
+                      hasOpenOrder={openOrderPrices.includes(price)}
                       key={price + ''}
                       price={price}
                       size={displayCumulativeSize ? cumulativeSize : size}
@@ -408,9 +424,8 @@ export default function Orderbook({ depth = 8 }) {
 }
 
 const OrderbookRow = React.memo<any>(
-  ({ side, price, size, sizePercent, invert }) => {
+  ({ side, price, size, sizePercent, invert, hasOpenOrder, market }) => {
     const element = useRef(null)
-    const market = useMangoStore((s) => s.selectedMarket.current)
     const setMangoStore = useMangoStore((s) => s.set)
 
     useEffect(() => {
@@ -447,6 +462,8 @@ const OrderbookRow = React.memo<any>(
       })
     }
 
+    if (!market) return null
+
     return (
       <div className={`flex text-sm leading-7 justify-between`} ref={element}>
         {invert ? (
@@ -462,19 +479,32 @@ const OrderbookRow = React.memo<any>(
               />
               <div
                 onClick={handlePriceClick}
-                className="z-30 relative text-th-fgd-1 px-1"
+                className={`z-30 filter brightness-110 relative text-th-fgd-1 px-4 ${
+                  side === 'buy' ? `text-th-green` : `text-th-red`
+                }`}
               >
-                {formattedPrice}
+                {usdFormatter(
+                  formattedPrice,
+                  getDecimalCount(market.tickSize),
+                  false
+                )}
               </div>
             </div>
-            <div className={`text-right`} onClick={handleSizeClick}>
+            <div
+              className={`text-right ${
+                hasOpenOrder ? 'text-th-primary' : 'text-th-fgd-1'
+              }`}
+              onClick={handleSizeClick}
+            >
               {formattedSize}
             </div>
           </>
         ) : (
           <>
             <div
-              className={`text-left flex-1 text-th-fgd-1`}
+              className={`text-left flex-1 ${
+                hasOpenOrder ? 'text-th-primary' : 'text-th-fgd-1'
+              }`}
               onClick={handleSizeClick}
             >
               {formattedSize}
@@ -488,10 +518,16 @@ const OrderbookRow = React.memo<any>(
                 side={side}
               />
               <div
-                className={`z-30 relative text-th-fgd-1 px-1`}
+                className={`z-30 filter brightness-110 relative px-4 ${
+                  side === 'buy' ? `text-th-green` : `text-th-red`
+                }`}
                 onClick={handlePriceClick}
               >
-                {formattedPrice}
+                {usdFormatter(
+                  formattedPrice,
+                  getDecimalCount(market.tickSize),
+                  false
+                )}
               </div>
             </div>
           </>
