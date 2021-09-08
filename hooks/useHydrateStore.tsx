@@ -5,7 +5,7 @@ import useInterval from './useInterval'
 import useOrderbook from './useOrderbook'
 
 const SECONDS = 1000
-const _SLOW_REFRESH_INTERVAL = 10 * SECONDS
+const _SLOW_REFRESH_INTERVAL = 12 * SECONDS
 
 const useHydrateStore = () => {
   const setMangoStore = useMangoStore((s) => s.set)
@@ -21,7 +21,11 @@ const useHydrateStore = () => {
 
   useInterval(() => {
     actions.fetchMangoGroup()
-  }, 60 * SECONDS)
+  }, 120 * SECONDS)
+
+  useInterval(() => {
+    actions.fetchMangoGroupCache()
+  }, 30 * SECONDS)
 
   useEffect(() => {
     setMangoStore((state) => {

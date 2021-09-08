@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react'
 import styled from '@emotion/styled'
+import Big from 'big.js'
 import { css, keyframes } from '@emotion/react'
 import useInterval from '../hooks/useInterval'
 import usePrevious from '../hooks/usePrevious'
@@ -14,6 +15,7 @@ import useMarkPrice from '../hooks/useMarkPrice'
 import { ElementTitle } from './styles'
 import useMangoStore from '../stores/useMangoStore'
 import Tooltip from './Tooltip'
+import GroupSize from './GroupSize'
 import FloatingElement from './FloatingElement'
 import { useOpenOrders } from '../hooks/useOpenOrders'
 
@@ -69,6 +71,43 @@ const StyledFloatingElement = styled(FloatingElement)`
   overflow: hidden;
 `
 
+const groupBy = (ordersArray, market, grouping: number, isBids: boolean) => {
+  if (!ordersArray || !market || !grouping || grouping == market?.tickSize) {
+    return ordersArray || []
+  }
+  const groupFloors = {}
+  for (let i = 0; i < ordersArray.length; i++) {
+    if (typeof ordersArray[i] == 'undefined') {
+      break
+    }
+    const bigGrouping = Big(grouping)
+    const bigOrder = Big(ordersArray[i][0])
+
+    const floor = isBids
+      ? bigOrder.div(bigGrouping).round(0, Big.roundDown).times(bigGrouping)
+      : bigOrder.div(bigGrouping).round(0, Big.roundUp).times(bigGrouping)
+    if (typeof groupFloors[floor] == 'undefined') {
+      groupFloors[floor] = ordersArray[i][1]
+    } else {
+      groupFloors[floor] = ordersArray[i][1] + groupFloors[floor]
+    }
+  }
+  const sortedGroups = Object.entries(groupFloors)
+    .map((entry) => {
+      return [
+        +parseFloat(entry[0]).toFixed(getDecimalCount(grouping)),
+        entry[1],
+      ]
+    })
+    .sort(function (a: number[], b: number[]) {
+      if (!a || !b) {
+        return -1
+      }
+      return isBids ? b[0] - a[0] : a[0] - b[0]
+    })
+  return sortedGroups
+}
+
 const getCumulativeOrderbookSide = (
   orders,
   totalSize,
@@ -95,6 +134,12 @@ const getCumulativeOrderbookSide = (
   return cumulative
 }
 
+const hasOpenOrderForPriceGroup = (openOrderPrices, price, grouping) => {
+  return !!openOrderPrices.find((ooPrice) => {
+    return ooPrice >= parseFloat(price) && ooPrice < price + grouping
+  })
+}
+
 export default function Orderbook({ depth = 8 }) {
   const groupConfig = useMangoStore((s) => s.selectedMangoGroup.config)
   const marketConfig = useMangoStore((s) => s.selectedMarket.config)
@@ -113,16 +158,27 @@ export default function Orderbook({ depth = 8 }) {
   const [orderbookData, setOrderbookData] = useState(null)
   const [defaultLayout, setDefaultLayout] = useState(true)
   const [displayCumulativeSize, setDisplayCumulativeSize] = useState(false)
+  const [grouping, setGrouping] = useState(0.01)
+  const [tickSize, setTickSize] = useState(0)
+  const previousGrouping = usePrevious(grouping)
+
+  useEffect(() => {
+    if (market && market.tickSize !== tickSize) {
+      setTickSize(market.tickSize)
+      setGrouping(market.tickSize)
+    }
+  }, [market])
 
   useInterval(() => {
     if (
       !currentOrderbookData.current ||
       JSON.stringify(currentOrderbookData.current) !==
         JSON.stringify(lastOrderbookData.current) ||
-      previousDepth !== depth
+      previousDepth !== depth ||
+      previousGrouping !== grouping
     ) {
-      const bids = orderbook?.bids || []
-      const asks = orderbook?.asks || []
+      const bids = groupBy(orderbook?.bids, market, grouping, true) || []
+      const asks = groupBy(orderbook?.asks, market, grouping, false) || []
 
       const sum = (total, [, size], index) =>
         index < depth ? total + size : total
@@ -194,6 +250,10 @@ export default function Orderbook({ depth = 8 }) {
     }))
   }
 
+  const onGroupSizeChange = (groupSize) => {
+    setGrouping(groupSize)
+  }
+
   return (
     <>
       <FlipCard>
@@ -237,8 +297,15 @@ export default function Orderbook({ depth = 8 }) {
                     </Tooltip>
                   </div>
                 </div>
-                <MarkPriceComponent markPrice={markPrice} />
-
+                <div className="flex justify-end items-center mb-4">
+                  <MarkPriceComponent markPrice={markPrice} />
+                  <GroupSize
+                    tickSize={market?.tickSize}
+                    onChange={onGroupSizeChange}
+                    value={grouping}
+                    className="relative flex flex-col w-1/3 items-end"
+                  />
+                </div>
                 <div
                   className={`text-th-fgd-4 flex justify-between mb-2 text-xs`}
                 >
@@ -266,7 +333,11 @@ export default function Orderbook({ depth = 8 }) {
                       }) => (
                         <OrderbookRow
                           market={market}
-                          hasOpenOrder={openOrderPrices.includes(price)}
+                          hasOpenOrder={hasOpenOrderForPriceGroup(
+                            openOrderPrices,
+                            price,
+                            grouping
+                          )}
                           key={price + ''}
                           price={price}
                           size={displayCumulativeSize ? cumulativeSize : size}
@@ -274,6 +345,7 @@ export default function Orderbook({ depth = 8 }) {
                           sizePercent={
                             displayCumulativeSize ? maxSizePercent : sizePercent
                           }
+                          grouping={grouping}
                         />
                       )
                     )}
@@ -289,7 +361,11 @@ export default function Orderbook({ depth = 8 }) {
                       }) => (
                         <OrderbookRow
                           market={market}
-                          hasOpenOrder={openOrderPrices.includes(price)}
+                          hasOpenOrder={hasOpenOrderForPriceGroup(
+                            openOrderPrices,
+                            price,
+                            grouping
+                          )}
                           invert
                           key={price + ''}
                           price={price}
@@ -298,6 +374,7 @@ export default function Orderbook({ depth = 8 }) {
                           sizePercent={
                             displayCumulativeSize ? maxSizePercent : sizePercent
                           }
+                          grouping={grouping}
                         />
                       )
                     )}
@@ -353,7 +430,15 @@ export default function Orderbook({ depth = 8 }) {
                     </Tooltip>
                   </div>
                 </div>
-                <MarkPriceComponent markPrice={markPrice} />
+                <div className="flex flex-row justify-end">
+                  <MarkPriceComponent markPrice={markPrice} />
+                  <GroupSize
+                    tickSize={market?.tickSize}
+                    onChange={onGroupSizeChange}
+                    value={grouping}
+                    className="relative flex flex-col w-1/3 items-end mb-1"
+                  />
+                </div>
                 <div className={`text-th-fgd-4 flex justify-between mb-2`}>
                   <div className={`text-left text-xs`}>
                     {displayCumulativeSize ? 'Cumulative ' : ''}Size (
@@ -373,7 +458,11 @@ export default function Orderbook({ depth = 8 }) {
                   }) => (
                     <OrderbookRow
                       market={market}
-                      hasOpenOrder={openOrderPrices.includes(price)}
+                      hasOpenOrder={hasOpenOrderForPriceGroup(
+                        openOrderPrices,
+                        price,
+                        grouping
+                      )}
                       key={price + ''}
                       price={price}
                       size={displayCumulativeSize ? cumulativeSize : size}
@@ -381,6 +470,7 @@ export default function Orderbook({ depth = 8 }) {
                       sizePercent={
                         displayCumulativeSize ? maxSizePercent : sizePercent
                       }
+                      grouping={grouping}
                     />
                   )
                 )}
@@ -403,7 +493,11 @@ export default function Orderbook({ depth = 8 }) {
                   }) => (
                     <OrderbookRow
                       market={market}
-                      hasOpenOrder={openOrderPrices.includes(price)}
+                      hasOpenOrder={hasOpenOrderForPriceGroup(
+                        openOrderPrices,
+                        price,
+                        grouping
+                      )}
                       key={price + ''}
                       price={price}
                       size={displayCumulativeSize ? cumulativeSize : size}
@@ -411,6 +505,7 @@ export default function Orderbook({ depth = 8 }) {
                       sizePercent={
                         displayCumulativeSize ? maxSizePercent : sizePercent
                       }
+                      grouping={grouping}
                     />
                   )
                 )}
@@ -424,7 +519,16 @@ export default function Orderbook({ depth = 8 }) {
 }
 
 const OrderbookRow = React.memo<any>(
-  ({ side, price, size, sizePercent, invert, hasOpenOrder, market }) => {
+  ({
+    side,
+    price,
+    size,
+    sizePercent,
+    invert,
+    hasOpenOrder,
+    market,
+    grouping,
+  }) => {
     const element = useRef(null)
     const setMangoStore = useMangoStore((s) => s.set)
 
@@ -483,11 +587,7 @@ const OrderbookRow = React.memo<any>(
                   side === 'buy' ? `text-th-green` : `text-th-red`
                 }`}
               >
-                {usdFormatter(
-                  formattedPrice,
-                  getDecimalCount(market.tickSize),
-                  false
-                )}
+                {usdFormatter(formattedPrice, getDecimalCount(grouping), false)}
               </div>
             </div>
             <div
@@ -523,11 +623,7 @@ const OrderbookRow = React.memo<any>(
                 }`}
                 onClick={handlePriceClick}
               >
-                {usdFormatter(
-                  formattedPrice,
-                  getDecimalCount(market.tickSize),
-                  false
-                )}
+                {usdFormatter(formattedPrice, getDecimalCount(grouping), false)}
               </div>
             </div>
           </>
@@ -545,7 +641,7 @@ const MarkPriceComponent = React.memo<{ markPrice: number }>(
 
     return (
       <div
-        className={`flex justify-center items-center font-bold text-lg pb-4 ${
+        className={`flex justify-center items-center font-bold text-lg w-1/3 ${
           markPrice > previousMarkPrice
             ? `text-th-green`
             : markPrice < previousMarkPrice

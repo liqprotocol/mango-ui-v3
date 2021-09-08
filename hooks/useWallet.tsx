@@ -144,13 +144,13 @@ export default function useWallet() {
     if (connected && mangoAccount) {
       actions.fetchMangoAccounts()
     }
-  }, 60 * SECONDS)
+  }, 180 * SECONDS)
 
   useInterval(() => {
     if (connected && mangoAccount) {
       actions.reloadMangoAccount()
     }
-  }, 15 * SECONDS)
+  }, 20 * SECONDS)
 
   return { connected, wallet }
 }
