@@ -16,7 +16,6 @@ import TradeType from './TradeType'
 import Input from '../Input'
 import { Market } from '@project-serum/serum'
 import Big from 'big.js'
-import MarketFee from '../MarketFee'
 import Loading from '../Loading'
 import Tooltip from '../Tooltip'
 import OrderSideTabs from './OrderSideTabs'
@@ -27,6 +26,8 @@ import { useViewport } from '../../hooks/useViewport'
 import { breakpoints } from '../TradePageGrid'
 import EstPriceImpact from './EstPriceImpact'
 import useFees from '../../hooks/useFees'
+import { useTranslation } from 'next-i18next'
+import useSrmAccount from '../../hooks/useSrmAccount'
 
 export const TRIGGER_ORDER_TYPES = [
   'Stop Loss',
@@ -41,6 +42,7 @@ interface AdvancedTradeFormProps {
 export default function AdvancedTradeForm({
   initLeverage,
 }: AdvancedTradeFormProps) {
+  const { t } = useTranslation('common')
   const set = useMangoStore((s) => s.set)
   const { ipAllowed } = useIpAddress()
   const connected = useMangoStore((s) => s.wallet.connected)
@@ -55,6 +57,7 @@ export default function AdvancedTradeForm({
   const [spotMargin, setSpotMargin] = useState(true)
   const [positionSizePercent, setPositionSizePercent] = useState('')
   const { takerFee } = useFees()
+  const { totalMsrm } = useSrmAccount()
 
   const mangoGroup = useMangoStore((s) => s.selectedMangoGroup.current)
   const mangoCache = useMangoStore((s) => s.selectedMangoGroup.cache)
@@ -403,19 +406,23 @@ export default function AdvancedTradeForm({
 
   const closeDepositString =
     percentToClose(baseSize, roundedDeposits) > 100
-      ? `100% close position + Open a ${(+baseSize - roundedDeposits).toFixed(
-          sizeDecimalCount
-        )} ${marketConfig.baseSymbol} short`
-      : `${percentToClose(baseSize, roundedDeposits).toFixed(
-          0
-        )}% close position`
+      ? t('close-open-short', {
+          size: (+baseSize - roundedDeposits).toFixed(sizeDecimalCount),
+          symbol: marketConfig.baseSymbol,
+        })
+      : `${percentToClose(baseSize, roundedDeposits).toFixed(0)}% ${t(
+          'close-position'
+        ).toLowerCase()}`
 
   const closeBorrowString =
     percentToClose(baseSize, roundedBorrows) > 100
-      ? `100% close position + Open a ${(+baseSize - roundedBorrows).toFixed(
-          sizeDecimalCount
-        )} ${marketConfig.baseSymbol} long`
-      : `${percentToClose(baseSize, roundedBorrows).toFixed(0)}% close position`
+      ? t('close-open-long', {
+          size: (+baseSize - roundedDeposits).toFixed(sizeDecimalCount),
+          symbol: marketConfig.baseSymbol,
+        })
+      : `${percentToClose(baseSize, roundedBorrows).toFixed(0)}% ${t(
+          'close-position'
+        ).toLowerCase()}`
 
   let priceImpact
   let estimatedPrice = price
@@ -474,19 +481,19 @@ export default function AdvancedTradeForm({
   async function onSubmit() {
     if (!price && isLimitOrder) {
       notify({
-        title: 'Missing price',
+        title: t('missing-price'),
         type: 'error',
       })
       return
     } else if (!baseSize) {
       notify({
-        title: 'Missing size',
+        title: t('missing-size'),
         type: 'error',
       })
       return
     } else if (!triggerPrice && isTriggerOrder) {
       notify({
-        title: 'Missing trigger price',
+        title: t('missing-trigger'),
         type: 'error',
       })
       return
@@ -512,8 +519,8 @@ export default function AdvancedTradeForm({
 
       if (!orderPrice) {
         notify({
-          title: 'Price not available',
-          description: 'Please try again',
+          title: t('price-unavailable'),
+          description: t('try-again'),
           type: 'error',
         })
       }
@@ -541,7 +548,9 @@ export default function AdvancedTradeForm({
           side,
           orderPrice,
           baseSize,
-          orderType
+          orderType,
+          null,
+          totalMsrm > 0 ? true : false
         )
       } else {
         if (isTriggerOrder) {
@@ -575,12 +584,12 @@ export default function AdvancedTradeForm({
           )
         }
       }
-      notify({ title: 'Successfully placed trade', txid })
+      notify({ title: t('successfully-placed'), txid })
       setPrice('')
       onSetBaseSize('')
     } catch (e) {
       notify({
-        title: 'Error placing order',
+        title: t('order-error'),
         description: e.message,
         txid: e.txid,
         type: 'error',
@@ -623,7 +632,7 @@ export default function AdvancedTradeForm({
       <OrderSideTabs onChange={onChangeSide} side={side} />
       <div className="grid grid-cols-12 gap-2 text-left">
         <div className="col-span-12 md:col-span-6">
-          <label className="text-xxs text-th-fgd-3">Type</label>
+          <label className="text-xxs text-th-fgd-3">{t('type')}</label>
           <TradeType
             onChange={onTradeTypeChange}
             value={tradeType}
@@ -633,7 +642,7 @@ export default function AdvancedTradeForm({
         <div className="col-span-12 md:col-span-6">
           {!isTriggerOrder ? (
             <>
-              <label className="text-xxs text-th-fgd-3">Price</label>
+              <label className="text-xxs text-th-fgd-3">{t('price')}</label>
               <Input
                 type="number"
                 min="0"
@@ -653,7 +662,9 @@ export default function AdvancedTradeForm({
             </>
           ) : (
             <>
-              <label className="text-xxs text-th-fgd-3">Trigger Price</label>
+              <label className="text-xxs text-th-fgd-3">
+                {t('trigger-price')}
+              </label>
               <Input
                 type="number"
                 min="0"
@@ -674,7 +685,7 @@ export default function AdvancedTradeForm({
         {isTriggerLimit && (
           <>
             <div className="col-span-12">
-              <label className="text-xxs text-th-fgd-3">Price</label>
+              <label className="text-xxs text-th-fgd-3">{t('price')}</label>
               <Input
                 type="number"
                 min="0"
@@ -693,7 +704,7 @@ export default function AdvancedTradeForm({
           </>
         )}
         <div className="col-span-6">
-          <label className="text-xxs text-th-fgd-3">Size</label>
+          <label className="text-xxs text-th-fgd-3">{t('size')}</label>
           <Input
             type="number"
             min="0"
@@ -710,7 +721,7 @@ export default function AdvancedTradeForm({
           />
         </div>
         <div className="col-span-6">
-          <label className="text-xxs text-th-fgd-3">Quantity</label>
+          <label className="text-xxs text-th-fgd-3">{t('quantity')}</label>
           <Input
             type="number"
             min="0"
@@ -758,7 +769,7 @@ export default function AdvancedTradeForm({
                     className="hidden md:block"
                     delay={250}
                     placement="left"
-                    content="Post only orders are guaranteed to be the maker order or else it will be canceled."
+                    content={t('tooltip-post')}
                   >
                     <Checkbox
                       checked={postOnly}
@@ -773,7 +784,7 @@ export default function AdvancedTradeForm({
                     className="hidden md:block"
                     delay={250}
                     placement="left"
-                    content="Immediate or cancel orders are guaranteed to be the taker or it will be canceled."
+                    content={t('tooltip-ioc')}
                   >
                     <div className="flex items-center text-th-fgd-3 text-xs">
                       <Checkbox
@@ -793,7 +804,7 @@ export default function AdvancedTradeForm({
                   className="hidden md:block"
                   delay={250}
                   placement="left"
-                  content="Reduce only orders will only reduce your overall position."
+                  content={t('tooltip-reduce')}
                 >
                   <Checkbox
                     checked={reduceOnly}
@@ -810,7 +821,7 @@ export default function AdvancedTradeForm({
                 <Tooltip
                   delay={250}
                   placement="left"
-                  content="Enable spot margin for this trade"
+                  content={t('tooltip-enable-margin')}
                 >
                   <Checkbox
                     checked={spotMargin}
@@ -825,9 +836,7 @@ export default function AdvancedTradeForm({
           <div className="col-span-12 md:col-span-10 md:col-start-3 pt-1">
             {tradeType === 'Market' && priceImpact ? (
               <EstPriceImpact priceImpact={priceImpact} />
-            ) : (
-              <MarketFee />
-            )}
+            ) : null}
           </div>
 
           <div className={`flex pt-4`}>
@@ -848,20 +857,24 @@ export default function AdvancedTradeForm({
                     <Loading className="mx-auto" />
                   </div>
                 ) : sizeTooLarge ? (
-                  'Size Too Large'
+                  t('too-large')
                 ) : side === 'buy' ? (
-                  `${baseSize > 0 ? 'Buy ' + baseSize : 'Buy '} ${
+                  `${
+                    baseSize > 0 ? `${t('buy')} ` + baseSize : `${t('buy')} `
+                  } ${
                     isPerpMarket ? marketConfig.name : marketConfig.baseSymbol
                   }`
                 ) : (
-                  `${baseSize > 0 ? 'Sell ' + baseSize : 'Sell '} ${
+                  `${
+                    baseSize > 0 ? `${t('sell')} ` + baseSize : `${t('sell')} `
+                  } ${
                     isPerpMarket ? marketConfig.name : marketConfig.baseSymbol
                   }`
                 )}
               </Button>
             ) : (
               <Button disabled className="flex-grow">
-                <span>Country Not Allowed</span>
+                <span>{t('country-not-allowed')}</span>
               </Button>
             )}
           </div>
