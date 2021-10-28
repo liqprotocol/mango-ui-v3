@@ -14,7 +14,7 @@ import { useOpenOrders } from '../../hooks/useOpenOrders'
 import { Order, Market } from '@project-serum/serum/lib/market'
 import { PerpOrder, PerpMarket } from '@blockworks-foundation/mango-client'
 import { notify } from '../../utils/notifications'
-import { sleep, formatUsdValue } from '../../utils'
+import { sleep, formatUsdValue, usdFormatter } from '../../utils'
 import useInterval from '../../hooks/useInterval'
 import { PerpTriggerOrder } from '../../@types/types'
 
@@ -47,7 +47,7 @@ const TVChartContainer = () => {
 
   const selectedMarketName = selectedMarketConfig.name
   const openOrders = useOpenOrders()
-  const actions = useMangoStore((s) => s.actions )
+  const actions = useMangoStore((s) => s.actions)
   const connected = useMangoStore((s) => s.wallet.connected)
   const selectedMarginAccount =
     useMangoStore.getState().selectedMangoAccount.current
@@ -56,6 +56,7 @@ const TVChartContainer = () => {
   const [moveInProgress, toggleMoveInProgress] = useState(false)
   const [orderInProgress, toggleOrderInProgress] = useState(false)
   const [priceReset, togglePriceReset] = useState(false)
+  const [showOrderLines, toggleShowOrderLines] = useState(true)
   const mangoClient = useMangoStore.getState().connection.client
 
   // @ts-ignore
@@ -146,9 +147,35 @@ const TVChartContainer = () => {
     const tvWidget = new widget(widgetOptions)
     tvWidgetRef.current = tvWidget
     setLines(deleteLines())
+
+    tvWidgetRef.current.onChartReady(function () {
+      const button = tvWidgetRef.current.createButton()
+      button.textContent = 'OL'
+      button.style.color =
+        theme === 'Dark' || theme === 'Mango'
+          ? 'rgb(242, 201, 76)'
+          : 'rgb(255, 156, 36)'
+      button.setAttribute('title', 'Toggle order line visibility')
+      button.addEventListener('click', function () {
+        toggleShowOrderLines((showOrderLines) => !showOrderLines)
+        if (
+          button.style.color === 'rgb(255, 156, 36)' ||
+          button.style.color === 'rgb(242, 201, 76)'
+        ) {
+          button.style.color =
+            theme === 'Dark' || theme === 'Mango'
+              ? 'rgb(138, 138, 138)'
+              : 'rgb(138, 138, 138)'
+        } else {
+          button.style.color =
+            theme === 'Dark' || theme === 'Mango'
+              ? 'rgb(242, 201, 76)'
+              : 'rgb(255, 156, 36)'
+        }
+      })
+    })
     //eslint-disable-next-line
   }, [selectedMarketConfig, theme, isMobile])
-
 
   const handleCancelOrder = async (
     order: Order | PerpOrder | PerpTriggerOrder,
@@ -204,10 +231,9 @@ const TVChartContainer = () => {
       actions.reloadMangoAccount()
       actions.reloadOrders()
       toggleOrderInProgress(false)
-      toggleMoveInProgress(false)      
+      toggleMoveInProgress(false)
     }
   }
-
 
   const handleModifyOrder = async (
     order: Order | PerpOrder,
@@ -283,7 +309,6 @@ const TVChartContainer = () => {
     }
   }
 
-
   function getLine(order, market) {
     return tvWidgetRef.current
       .chart()
@@ -321,13 +346,9 @@ const TVChartContainer = () => {
             tvWidgetRef.current.showConfirmDialog({
               title: 'Modify Your Order?',
               body: `Would you like to change your order from a 
-             ${order.size} ${market.config.baseSymbol} ${
-                order.side
-              } at $${currentOrderPrice} 
+             ${order.size} ${market.config.baseSymbol} ${order.side} at $${currentOrderPrice} 
              to a 
-            ${order.size} ${market.config.baseSymbol} LIMIT ${
-                order.side
-              } at $${updatedOrderPrice}?
+            ${order.size} ${market.config.baseSymbol} LIMIT ${order.side} at $${updatedOrderPrice}?
             `,
               callback: (res) => {
                 if (res) {
@@ -340,11 +361,10 @@ const TVChartContainer = () => {
               },
             })
           }
-        }  else {
+        } else {
           tvWidgetRef.current.showNoticeDialog({
             title: 'Advanced Order Type',
-            body:
-              'Advanced order types in the chart window may only be cancelled. If new conditions are required, please cancel this order and use the Advanced Trade Form.',              
+            body: 'Advanced order types in the chart window may only be cancelled. If new conditions are required, please cancel this order and use the Advanced Trade Form.',
             callback: () => {
               this.setPrice(currentOrderPrice)
               toggleMoveInProgress(false)
@@ -358,9 +378,7 @@ const TVChartContainer = () => {
         tvWidgetRef.current.showConfirmDialog({
           title: 'Cancel Your Order?',
           body: `Would you like to cancel your order for 
-       ${order.size} ${market.config.baseSymbol} ${
-            order.side
-          } at $${order.price}  
+       ${order.size} ${market.config.baseSymbol} ${order.side} at $${order.price}  
       `,
           callback: (res) => {
             if (res) {
@@ -374,45 +392,100 @@ const TVChartContainer = () => {
       .setPrice(order.price)
       .setQuantity(order.size)
       .setText(getLineText(order, market))
-      .setTooltip(order.perpTrigger?.clientOrderId ? `${order.orderType} Order #: ${order.orderId}` : `Order #: ${order.orderId}`)
-      .setBodyTextColor(theme === 'Dark' ? '#F2C94C' : theme === 'Light' ? '#FF9C24' : '#F2C94C')
-      .setQuantityTextColor(theme === 'Dark' ? '#F2C94C' : theme === 'Light' ? '#FF9C24' : '#F2C94C')
-      .setCancelButtonIconColor(theme === 'Dark' ? '#F2C94C' : theme === 'Light' ? '#FF9C24' : '#F2C94C')
-      .setBodyBorderColor(order.perpTrigger?.clientOrderId ? '#FF9C24' : order.side == 'buy' ? '#4BA53B' : '#AA2222')
-      .setQuantityBorderColor(order.perpTrigger?.clientOrderId ? '#FF9C24' : order.side == 'buy' ? '#4BA53B' : '#AA2222')
-      .setCancelButtonBorderColor(order.perpTrigger?.clientOrderId ? '#FF9C24' : order.side == 'buy' ? '#4BA53B' : '#AA2222')
-      .setBodyBackgroundColor(theme === 'Dark' ? '#1B1B1F' : theme === 'Light' ? '#fff' : '#1D1832')
-      .setQuantityBackgroundColor(theme === 'Dark' ? '#1B1B1F' : theme === 'Light' ? '#fff' : '#1D1832')
-      .setCancelButtonBackgroundColor(theme === 'Dark' ? '#1B1B1F' : theme === 'Light' ? '#fff' : '#1D1832')
+      .setTooltip(
+        order.perpTrigger?.clientOrderId
+          ? `${order.orderType} Order #: ${order.orderId}`
+          : `Order #: ${order.orderId}`
+      )
+      .setBodyTextColor(
+        theme === 'Dark' ? '#F2C94C' : theme === 'Light' ? '#FF9C24' : '#F2C94C'
+      )
+      .setQuantityTextColor(
+        theme === 'Dark' ? '#F2C94C' : theme === 'Light' ? '#FF9C24' : '#F2C94C'
+      )
+      .setCancelButtonIconColor(
+        theme === 'Dark' ? '#F2C94C' : theme === 'Light' ? '#FF9C24' : '#F2C94C'
+      )
+      .setBodyBorderColor(
+        order.perpTrigger?.clientOrderId
+          ? '#FF9C24'
+          : order.side == 'buy'
+          ? '#4BA53B'
+          : '#AA2222'
+      )
+      .setQuantityBorderColor(
+        order.perpTrigger?.clientOrderId
+          ? '#FF9C24'
+          : order.side == 'buy'
+          ? '#4BA53B'
+          : '#AA2222'
+      )
+      .setCancelButtonBorderColor(
+        order.perpTrigger?.clientOrderId
+          ? '#FF9C24'
+          : order.side == 'buy'
+          ? '#4BA53B'
+          : '#AA2222'
+      )
+      .setBodyBackgroundColor(
+        theme === 'Dark' ? '#1B1B1F' : theme === 'Light' ? '#fff' : '#1D1832'
+      )
+      .setQuantityBackgroundColor(
+        theme === 'Dark' ? '#1B1B1F' : theme === 'Light' ? '#fff' : '#1D1832'
+      )
+      .setCancelButtonBackgroundColor(
+        theme === 'Dark' ? '#1B1B1F' : theme === 'Light' ? '#fff' : '#1D1832'
+      )
       .setBodyFont('Lato, sans-serif')
       .setQuantityFont('Lato, sans-serif')
-      .setLineColor(order.perpTrigger?.clientOrderId ? '#FF9C24' : order.side == 'buy' ? '#4BA53B' : '#AA2222')
+      .setLineColor(
+        order.perpTrigger?.clientOrderId
+          ? '#FF9C24'
+          : order.side == 'buy'
+          ? '#4BA53B'
+          : '#AA2222'
+      )
       .setLineLength(3)
       .setLineWidth(2)
       .setLineStyle(1)
   }
 
-
   function getLineText(order, market) {
     if (order.perpTrigger?.clientOrderId) {
+      const triggerPrice =
+        order.perpTrigger.triggerPrice *
+        Math.pow(10, market.config.baseDecimals - market.config.quoteDecimals)
       if (order.side === 'buy') {
         if (order.perpTrigger.triggerCondition === 'above') {
-          return (order.orderType === 'market' ? `Stop Loss ` : `Stop Limit `) + `(${order.orderType} ${order.side}) if price is ${order.perpTrigger.triggerCondition} $${Number(order.perpTrigger.triggerPrice)}`
+          return (
+            (order.orderType === 'market' ? `Stop Loss ` : `Stop Limit `) +
+            `(${order.orderType} ${order.side}) if price is ${
+              order.perpTrigger.triggerCondition
+            } ${usdFormatter(triggerPrice)}`
+          )
         } else {
-          return `Take Profit (${order.orderType} ${order.side}) if price is ${order.perpTrigger.triggerCondition} $${Number(order.perpTrigger.triggerPrice)}`
+          return `Take Profit (${order.orderType} ${order.side}) if price is ${
+            order.perpTrigger.triggerCondition
+          } ${usdFormatter(triggerPrice)}`
         }
       } else {
         if (order.perpTrigger.triggerCondition === 'below') {
-          return (order.orderType === 'market' ? `Stop Loss ` : `Stop Limit `) + `(${order.orderType} ${order.side}) if price is ${order.perpTrigger.triggerCondition} $${Number(order.perpTrigger.triggerPrice)}`
+          return (
+            (order.orderType === 'market' ? `Stop Loss ` : `Stop Limit `) +
+            `(${order.orderType} ${order.side}) if price is ${
+              order.perpTrigger.triggerCondition
+            } ${usdFormatter(triggerPrice)}`
+          )
         } else {
-          return `Take Profit (${order.orderType} ${order.side}) if price is ${order.perpTrigger.triggerCondition} $${Number(order.perpTrigger.triggerPrice)}`
+          return `Take Profit (${order.orderType} ${order.side}) if price is ${
+            order.perpTrigger.triggerCondition
+          } ${usdFormatter(triggerPrice)}`
         }
       }
     } else {
       return `${order.side} ${market.config.baseSymbol}`.toUpperCase()
     }
   }
-
 
   function deleteLines() {
     tvWidgetRef.current.onChartReady(() => {
@@ -424,7 +497,6 @@ const TVChartContainer = () => {
     })
     return new Map()
   }
-
 
   function drawLines() {
     const tempLines = new Map()
@@ -438,43 +510,51 @@ const TVChartContainer = () => {
     return tempLines
   }
 
-
   useInterval(() => {
-    if (selectedMarginAccount && connected && !moveInProgress && !orderInProgress && openOrders?.length > 0) {
+    if (showOrderLines) {
+      if (
+        selectedMarginAccount &&
+        connected &&
+        !moveInProgress &&
+        !orderInProgress &&
+        openOrders?.length > 0
+      ) {
+        let matches = 0
+        let openOrdersInSelectedMarket = 0
+        lines?.forEach((value, key) => {
+          openOrders?.map(({ order }) => {
+            if (order.orderId == key) {
+              matches += 1
+            }
+          })
+        })
 
-      let matches = 0
-      let openOrdersInSelectedMarket = 0
-      lines?.forEach((value, key) => {
-        openOrders?.map(({ order }) => {
-          if (order.orderId == key) {
-            matches += 1
+        openOrders?.map(({ market }) => {
+          if (market.config.name == selectedMarketName) {
+            openOrdersInSelectedMarket += 1
           }
         })
-      })
 
-      openOrders?.map(({ market }) => {
-        if (market.config.name == selectedMarketName) {
-          openOrdersInSelectedMarket += 1
+        if (
+          lines?.size != openOrdersInSelectedMarket ||
+          matches != openOrdersInSelectedMarket ||
+          (lines?.size > 0 && lines?.size != matches) ||
+          (lines?.size > 0 && !selectedMarginAccount) ||
+          priceReset
+        ) {
+          if (priceReset) {
+            togglePriceReset(false)
+          }
+          setLines(deleteLines())
+          setLines(drawLines())
         }
-      })
-
-      if (
-        lines?.size != openOrdersInSelectedMarket 
-        || matches != openOrdersInSelectedMarket 
-        || lines?.size > 0 && lines?.size != matches 
-        || lines?.size > 0 && !selectedMarginAccount 
-        || priceReset
-      ) {
-        if (priceReset) { togglePriceReset(false) }
+      } else if (lines?.size > 0 && !moveInProgress && !orderInProgress) {
         setLines(deleteLines())
-        setLines(drawLines())
       }
-
-    } else if (lines?.size > 0 && !moveInProgress && !orderInProgress) {
+    } else if (lines?.size > 0) {
       setLines(deleteLines())
     }
   }, [100])
-
 
   return <div id={defaultProps.containerId} className="tradingview-chart" />
 }
