@@ -6,6 +6,7 @@ import Chart from '../Chart'
 import BN from 'bn.js'
 import { tokenPrecision } from '../../utils'
 import { useTranslation } from 'next-i18next'
+import Select from '../Select'
 
 function calculateFundingRate(
   oldestLongFunding,
@@ -80,9 +81,18 @@ export default function StatsPerps({ perpStats }) {
     perpsData.splice(index, 1)
   }
 
+  const progress =
+    1 -
+    selectedMarket.liquidityMiningInfo.mngoLeft.toNumber() /
+      selectedMarket.liquidityMiningInfo.mngoPerPeriod.toNumber()
+  const start = selectedMarket.liquidityMiningInfo.periodStart.toNumber()
+  const now = Date.now() / 1000
+  const elapsed = now - start
+  const est = start + elapsed / progress
+
   return (
     <>
-      <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-between mb-4 w-full">
+      <div className="flex items-center justify-between mb-4 w-full">
         <div className="flex items-center text-xl text-th-fgd-1">
           <img
             width="24"
@@ -94,7 +104,26 @@ export default function StatsPerps({ perpStats }) {
           />
           {selectedAsset.split(/-|\//)[0]} {t('perpetual-futures')}
         </div>
-        <div className="flex mb-4 sm:mb-0 space-x-2">
+        <Select
+          value={selectedAsset}
+          onChange={(a) => setSelectedAsset(a)}
+          className="flex-shrink-0 ml-4 w-36 md:hidden"
+        >
+          <div className="space-y-2">
+            {marketConfigs.map((market) => (
+              <Select.Option
+                key={market.name}
+                value={market.name}
+                className={`bg-th-bkg-1 relative rounded-md w-full px-3 py-3 cursor-pointer default-transition flex hover:bg-th-bkg-3 focus:outline-none`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  {market.name}
+                </div>
+              </Select.Option>
+            ))}
+          </div>
+        </Select>
+        <div className="hidden md:flex space-x-2">
           {marketConfigs.map((market) => (
             <div
               className={`bg-th-bkg-3 cursor-pointer default-transition px-2 py-1 rounded-md text-center w-full whitespace-nowrap
@@ -107,12 +136,12 @@ export default function StatsPerps({ perpStats }) {
               onClick={() => setSelectedAsset(market.name)}
               key={market.name as string}
             >
-              {market.name}
+              {market.name.slice(0, -5)}
             </div>
           ))}
         </div>
       </div>
-      <div className="grid grid-flow-col grid-cols-1 grid-rows-2 md:grid-cols-2 md:grid-rows-1 gap-2 sm:gap-4">
+      <div className="grid grid-flow-row grid-cols-1 grid-rows-2 md:grid-cols-2 md:grid-rows-2 gap-2 sm:gap-4">
         <div
           className="border border-th-bkg-4 relative p-4 rounded-md"
           style={{ height: '330px' }}
@@ -147,6 +176,61 @@ export default function StatsPerps({ perpStats }) {
             }
             type="area"
           />
+        </div>
+        <div className="border border-th-bkg-4 relative p-4 rounded-md">
+          <div className="text-lg">Liquidity Mining</div>
+          <div className="flex justify-between mt-4">
+            <div>Rate</div>
+            <div>
+              {(
+                selectedMarket.liquidityMiningInfo.rate.toNumber() * 100
+              ).toFixed(2)}
+              %
+            </div>
+          </div>
+          <div className="flex justify-between mt-4">
+            <div>Max Depth Bps</div>
+            <div>
+              {selectedMarket.liquidityMiningInfo.maxDepthBps.toString()}
+            </div>
+          </div>
+          <div className="flex justify-between mt-4">
+            <div>Target Period Length</div>
+            <div>
+              {(
+                selectedMarket.liquidityMiningInfo.targetPeriodLength.toNumber() /
+                60
+              ).toFixed()}{' '}
+              mins
+            </div>
+          </div>
+          <div className="flex justify-between mt-4">
+            <div>MNGO Per Period</div>
+            <div>
+              {(
+                selectedMarket.liquidityMiningInfo.mngoPerPeriod.toNumber() /
+                Math.pow(10, 6)
+              ).toFixed(2)}
+            </div>
+          </div>
+          <div className="flex justify-between mt-4">
+            <div>MNGO Left In Period</div>
+            <div>
+              {(
+                selectedMarket.liquidityMiningInfo.mngoLeft.toNumber() /
+                Math.pow(10, 6)
+              ).toFixed(2)}
+            </div>
+          </div>
+
+          <div className="flex justify-between mt-4">
+            <div>Est Period End</div>
+            <div>{new Date(est * 1000).toUTCString()}</div>
+          </div>
+          <div className="flex justify-between mt-4">
+            <div>Period Progress</div>
+            <div>{(progress * 100).toFixed(2)}%</div>
+          </div>
         </div>
       </div>
     </>

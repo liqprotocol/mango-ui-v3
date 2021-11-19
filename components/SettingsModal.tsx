@@ -11,10 +11,10 @@ import Select from './Select'
 import { useTranslation } from 'next-i18next'
 
 const NODE_URLS = [
-  { label: 'Mango Node', value: 'https://mango.rpcpool.com' },
+  { label: 'Triton (RPC Pool)', value: 'https://mango.rpcpool.com' },
   {
     label: 'Genesys Go',
-    value: 'https://lokidfxnwlabdq.main.genesysgo.net:8899/',
+    value: 'https://mango.genesysgo.net/',
   },
   {
     label: 'Project Serum',
@@ -25,13 +25,13 @@ const NODE_URLS = [
 
 const CUSTOM_NODE = NODE_URLS.find((n) => n.label === 'Custom')
 
-export const NODE_URL_KEY = 'node-url-key-0.4'
+export const NODE_URL_KEY = 'node-url-key-0.5'
 export const DEFAULT_MARKET_KEY = 'defaultMarket'
 export const initialMarket = {
   base: 'BTC',
   kind: 'perp',
   name: 'BTC-PERP',
-  path: '/perp/BTC',
+  path: '/market?name=BTC-PERP',
 }
 
 const SettingsModal = ({ isOpen, onClose }) => {
@@ -124,20 +124,18 @@ const DefaultMarketSettings = ({ setSettingsView }) => {
       base: 'BTC',
       kind: 'perp',
       name: 'BTC-PERP',
-      path: '/perp/BTC',
+      path: '/market?name=BTC-PERP',
     }
   )
   const handleSetDefaultMarket = (market) => {
     const base = market.slice(0, -5)
     const kind = market.includes('PERP') ? 'perp' : 'spot'
-    const defaultMarket = market.includes('PERP')
-      ? `/perp/${base}`
-      : `/spot/${base}`
+
     setDefaultMarket({
       base: base,
       kind: kind,
       name: market,
-      path: defaultMarket,
+      path: `/market?name=${market}`,
     })
   }
   const parsedDefaultMarket = defaultMarket

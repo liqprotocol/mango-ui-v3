@@ -17,7 +17,7 @@ import Settings from './Settings'
 const TopBar = () => {
   const { t } = useTranslation('common')
   const mangoAccount = useMangoStore((s) => s.selectedMangoAccount.current)
-  const connected = useMangoStore((s) => s.wallet.connected)
+  const wallet = useMangoStore((s) => s.wallet.current)
   const [showAccountsModal, setShowAccountsModal] = useState(false)
   const [defaultMarket] = useLocalStorageState(
     DEFAULT_MARKET_KEY,
@@ -31,10 +31,10 @@ const TopBar = () => {
   return (
     <>
       <nav className={`bg-th-bkg-2 border-b border-th-bkg-2`}>
-        <div className={`pl-2 md:px-4 lg:px-10`}>
+        <div className={`px-4 lg:px-10`}>
           <div className={`flex justify-between h-14`}>
             <div className={`flex`}>
-              <Link href={defaultMarket.path}>
+              <Link href={defaultMarket.path} shallow={true}>
                 <div
                   className={`cursor-pointer flex-shrink-0 flex items-center`}
                 >
@@ -46,7 +46,7 @@ const TopBar = () => {
                 </div>
               </Link>
               <div
-                className={`hidden md:flex md:items-center md:space-x-6 md:ml-4`}
+                className={`hidden md:flex md:items-center md:space-x-4 lg:space-x-6 md:ml-4`}
               >
                 <MenuItem href={defaultMarket.path}>{t('trade')}</MenuItem>
                 <MenuItem href="/account">{t('account')}</MenuItem>
@@ -96,7 +96,8 @@ const TopBar = () => {
               <div className="pl-2">
                 <Settings />
               </div>
-              {mangoAccount ? (
+              {mangoAccount &&
+              mangoAccount.owner.toBase58() === wallet?.publicKey.toBase58() ? (
                 <div className="pl-2">
                   <button
                     className="border border-th-bkg-4 py-1 px-2 rounded text-xs focus:outline-none hover:border-th-fgd-4"
@@ -112,7 +113,7 @@ const TopBar = () => {
                 </div>
               ) : null}
               <div className="flex">
-                <div className={`${connected ? 'pr-2 md:pr-0' : ''} pl-2`}>
+                <div className="pl-2">
                   <ConnectWalletButton />
                 </div>
               </div>

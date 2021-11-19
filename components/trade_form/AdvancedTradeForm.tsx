@@ -598,14 +598,16 @@ export default function AdvancedTradeForm({
     }
   }
 
+  /*
   const roundedMax = (
     Math.round(max / parseFloat(minOrderSize)) * parseFloat(minOrderSize)
   ).toFixed(sizeDecimalCount)
+  */
 
-  const sizeTooLarge =
+  const sizeTooLarge = false /*
     spotMargin || marketConfig.kind === 'perp'
       ? baseSize > roundedMax
-      : baseSize > spotMax
+      : baseSize > spotMax*/
 
   const disabledTradeButton =
     (!price && isLimitOrder) ||
@@ -738,7 +740,7 @@ export default function AdvancedTradeForm({
             unit="%"
             values={
               isMobile
-                ? ['10', '25', '50', '75']
+                ? ['10', '25', '50', '100']
                 : ['10', '25', '50', '75', '100']
             }
           />
@@ -871,9 +873,10 @@ export default function AdvancedTradeForm({
               </Button>
             )}
           </div>
-          <div className="flex text-xs text-th-fgd-4 px-6 mt-2.5 justify-center">
-            Maker fee: {(makerFee * 100).toFixed(2)}% | Taker fee:{' '}
-            {takerFee * 100}%
+          <div className="flex flex-col md:flex-row text-xs text-th-fgd-4 px-6 mt-2.5 items-center justify-center">
+            <div>Maker fee: {(makerFee * 100).toFixed(2)}% </div>
+            <span className="hidden md:block md:px-1">|</span>
+            <div> Taker fee: {takerFee * 100}%</div>
           </div>
         </div>
       </div>

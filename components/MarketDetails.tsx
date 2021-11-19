@@ -58,6 +58,7 @@ const MarketDetails = () => {
   const baseSymbol = marketConfig.baseSymbol
   const selectedMarketName = marketConfig.name
   const isPerpMarket = marketConfig.kind === 'perp'
+
   const previousMarketName: string = usePrevious(selectedMarketName)
   const mangoAccount = useMangoStore((s) => s.selectedMangoAccount.current)
   const connected = useMangoStore((s) => s.wallet.connected)
@@ -126,7 +127,6 @@ const MarketDetails = () => {
 
     const from = utcFrom.getTime() / 1000
     const to = utcTo.getTime() / 1000
-
     const ohlcv = await ChartApi.getOhlcv(selectedMarketName, '1D', from, to)
     if (ohlcv) {
       setOhlcv(ohlcv)
@@ -134,13 +134,15 @@ const MarketDetails = () => {
     }
   }, [selectedMarketName])
 
-  useInterval(async () => {
-    fetchOhlcv()
-  }, 5000)
+  // TODO: don't spam db
+  // useInterval(async () => {
+  //   fetchOhlcv()
+  // }, 5000)
 
   useMemo(() => {
     if (previousMarketName !== selectedMarketName) {
       setLoading(true)
+      fetchOhlcv()
     }
   }, [selectedMarketName])
 

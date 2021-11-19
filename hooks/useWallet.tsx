@@ -7,6 +7,7 @@ import {
   PhantomWalletAdapter,
   SlopeWalletAdapter,
   SolletExtensionAdapter,
+  SolflareExtensionWalletAdapter,
 } from '../utils/wallet-adapters'
 import { WalletAdapter } from '../@types/types'
 import useInterval from './useInterval'
@@ -22,6 +23,12 @@ export const WALLET_PROVIDERS = [
     url: 'https://www.phantom.app',
     icon: `https://www.phantom.app/img/logo.png`,
     adapter: PhantomWalletAdapter,
+  },
+  {
+    name: 'Solflare',
+    url: 'https://solflare.com',
+    icon: `${ASSET_URL}/solflare.svg`,
+    adapter: SolflareExtensionWalletAdapter,
   },
   {
     name: 'Sollet.io',
@@ -109,14 +116,15 @@ export default function useWallet() {
       actions.reloadOrders()
       actions.fetchTradeHistory()
       actions.fetchWalletTokens()
-      notify({
-        title: t('wallet-connected'),
-        description:
-          t('connected-to') +
-          wallet.publicKey.toString().substr(0, 5) +
-          '...' +
-          wallet.publicKey.toString().substr(-5),
-      })
+
+      // notify({
+      //   title: t('wallet-connected'),
+      //   description:
+      //     t('connected-to') +
+      //     wallet.publicKey.toString().substr(0, 5) +
+      //     '...' +
+      //     wallet.publicKey.toString().substr(-5),
+      // })
     })
     wallet.on('disconnect', () => {
       console.log('disconnecting wallet')
@@ -131,16 +139,6 @@ export default function useWallet() {
         title: t('wallet-disconnected'),
       })
     })
-    return () => {
-      if (wallet && wallet.connected) {
-        console.log('DISCONNECTING')
-
-        wallet.disconnect()
-      }
-      setMangoStore((state) => {
-        state.wallet.connected = false
-      })
-    }
   }, [wallet, setMangoStore])
 
   useInterval(() => {
