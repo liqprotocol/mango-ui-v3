@@ -5,7 +5,7 @@ import {
   ChartingLibraryWidgetOptions,
   IChartingLibraryWidget,
   ResolutionString,
-} from '../charting_library' // Make sure to follow step 1 of the README
+} from '../../public/charting_library'
 import { CHART_DATA_FEED } from '../../utils/chartDataConnector'
 import useMangoStore from '../../stores/useMangoStore'
 import { useViewport } from '../../hooks/useViewport'
@@ -124,6 +124,7 @@ const TVChartContainer = () => {
       custom_css_url: '/tradingview-chart.css',
       loading_screen: { backgroundColor: 'rgba(0,0,0,0.1)' },
       overrides: {
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
         'paneProperties.background':
           theme === 'Dark' ? '#1B1B1F' : theme === 'Light' ? '#fff' : '#1D1832',
         'mainSeriesProperties.candleStyle.barColorsOnPrevClose': true,
@@ -303,7 +304,7 @@ const TVChartContainer = () => {
       togglePriceReset(true)
     } finally {
       sleep(1000).then(() => {
-        actions.fetchAllMangoAccounts()
+        actions.reloadMangoAccount()
         actions.reloadOrders()
         toggleOrderInProgress(false)
         toggleMoveInProgress(false)
