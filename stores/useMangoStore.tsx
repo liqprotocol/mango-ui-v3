@@ -105,11 +105,14 @@ export interface Orderbook {
 }
 
 interface MangoStore extends State {
+  notificationIdCounter: number
   notifications: Array<{
     type: string
     title: string
     description?: string
     txid?: string
+    id: number
+    show?: boolean
   }>
   accountInfos: AccountInfoList
   connection: {
@@ -190,6 +193,7 @@ const useMangoStore = create<MangoStore>((set, get) => {
 
   const connection = new Connection(rpcUrl, 'processed' as Commitment)
   return {
+    notificationIdCounter: 0,
     notifications: [],
     accountInfos: {},
     connection: {
@@ -470,12 +474,12 @@ const useMangoStore = create<MangoStore>((set, get) => {
           connection,
           mangoClient.lastSlot
         )
-        console.log('reloading mango account')
 
         set((state) => {
           state.selectedMangoAccount.current = reloadedMangoAccount
           state.selectedMangoAccount.lastUpdatedAt = new Date().toISOString()
         })
+        console.log('reloaded mango account', reloadedMangoAccount)
       },
       async reloadOrders() {
         const mangoAccount = get().selectedMangoAccount.current

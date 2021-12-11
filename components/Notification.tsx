@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import {
   CheckCircleIcon,
   ExternalLinkIcon,
@@ -8,10 +8,10 @@ import {
 import useMangoStore from '../stores/useMangoStore'
 import { notify } from '../utils/notifications'
 import { useTranslation } from 'next-i18next'
+import useInterval from '../hooks/useInterval'
 
 const NotificationList = () => {
   const { t } = useTranslation('common')
-  const setMangoStore = useMangoStore((s) => s.set)
   const notifications = useMangoStore((s) => s.notifications)
   const walletTokens = useMangoStore((s) => s.wallet.tokens)
   const notEnoughSoLMessage = t('not-enough-sol')
@@ -43,46 +43,44 @@ const NotificationList = () => {
     }
   }, [notifications, walletTokens])
 
-  useEffect(() => {
-    if (notifications.length > 0) {
-      const id = setInterval(() => {
-        setMangoStore((state) => {
-          state.notifications = notifications.slice(1, notifications.length)
-        })
-      }, 6000)
-
-      return () => {
-        clearInterval(id)
-      }
-    }
-  }, [notifications, setMangoStore])
-
   const reversedNotifications = [...notifications].reverse()
+
+  console.log('reversedNotifs', reversedNotifications)
 
   return (
     <div
       className={`fixed inset-0 flex items-end px-4 py-6 pointer-events-none sm:p-6 text-th-fgd-1 z-50`}
     >
       <div className={`flex flex-col w-full`}>
-        {reversedNotifications.map((n, idx) => (
-          <Notification
-            key={`${n.title}${idx}`}
-            type={n.type}
-            title={n.title}
-            description={n.description}
-            txid={n.txid}
-          />
+        {reversedNotifications.map((n) => (
+          <Notification key={n.id} notification={n} />
         ))}
       </div>
     </div>
   )
 }
 
-const Notification = ({ type, title, description, txid }) => {
+const Notification = ({ notification }) => {
   const { t } = useTranslation('common')
-  const [showNotification, setShowNotification] = useState(true)
+  const setMangoStore = useMangoStore((s) => s.set)
+  const { type, title, description, txid, show, id } = notification
 
-  if (!showNotification) return null
+  const hideNotification = () => {
+    setMangoStore((s) => {
+      const newNotifications = s.notifications.map((n) =>
+        n.id === id ? { ...n, show: false } : n
+      )
+      s.notifications = newNotifications
+    })
+  }
+
+  useInterval(() => {
+    if (show) {
+      hideNotification()
+    }
+  }, 10000)
+
+  if (!show) return null
 
   return (
     <div
@@ -100,7 +98,7 @@ const Notification = ({ type, title, description, txid }) => {
             <XCircleIcon className={`text-th-red h-7 w-7 mr-1`} />
           )}
         </div>
-        <div className={`ml-2 w-0 flex-1`}>
+        <div className={`ml-2 flex-1`}>
           <div className={`font-bold text-base text-th-fgd-1`}>{title}</div>
           {description ? (
             <p className={`mb-0 mt-0.5 text-th-fgd-3`}>{description}</p>
@@ -108,19 +106,22 @@ const Notification = ({ type, title, description, txid }) => {
           {txid ? (
             <a
               href={'https://explorer.solana.com/tx/' + txid}
-              className="block flex items-center mt-0.5 text-sm"
+              className="flex items-center mt-0.5 text-sm"
               target="_blank"
               rel="noreferrer"
             >
-              {txid.slice(0, 8)}...
-              {txid.slice(txid.length - 8)}
+              <div className="break-all flex-1">
+                {type === 'error'
+                  ? txid
+                  : `${txid.slice(0, 14)}...${txid.slice(txid.length - 14)}`}
+              </div>
               <ExternalLinkIcon className="h-4 mb-0.5 ml-1 w-4" />
             </a>
           ) : null}
         </div>
         <div className={`absolute flex-shrink-0 right-2 top-2`}>
           <button
-            onClick={() => setShowNotification(false)}
+            onClick={hideNotification}
             className={`text-th-fgd-4 hover:text-th-primary focus:outline-none`}
           >
             <span className={`sr-only`}>{t('close')}</span>

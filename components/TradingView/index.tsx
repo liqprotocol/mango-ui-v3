@@ -81,6 +81,21 @@ const TVChartContainer = () => {
   const tvWidgetRef = useRef<IChartingLibraryWidget | null>(null)
 
   useEffect(() => {
+    if (
+      tvWidgetRef.current &&
+      // @ts-ignore
+      tvWidgetRef.current._innerAPI() &&
+      selectedMarketConfig.name !== tvWidgetRef.current.activeChart().symbol()
+    ) {
+      tvWidgetRef.current.setSymbol(
+        selectedMarketConfig.name,
+        defaultProps.interval,
+        () => {}
+      )
+    }
+  }, [selectedMarketConfig.name])
+
+  useEffect(() => {
     const widgetOptions: ChartingLibraryWidgetOptions = {
       symbol: selectedMarketConfig.name,
       // BEWARE: no trailing slash is expected in feed URL
@@ -158,7 +173,7 @@ const TVChartContainer = () => {
         theme === 'Dark' || theme === 'Mango'
           ? 'rgb(242, 201, 76)'
           : 'rgb(255, 156, 36)'
-      button.setAttribute('title', 'Toggle order line visibility')
+      button.setAttribute('title', t('tv-chart:toggle-order-line'))
       button.addEventListener('click', function () {
         toggleShowOrderLines((showOrderLines) => !showOrderLines)
         if (
@@ -178,7 +193,7 @@ const TVChartContainer = () => {
       })
     })
     //eslint-disable-next-line
-  }, [selectedMarketConfig, theme, isMobile])
+  }, [theme, isMobile])
 
   const handleCancelOrder = async (
     order: Order | PerpOrder | PerpTriggerOrder,

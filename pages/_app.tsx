@@ -15,16 +15,21 @@ import { ViewportProvider } from '../hooks/useViewport'
 import BottomBar from '../components/mobile/BottomBar'
 import { appWithTranslation } from 'next-i18next'
 
-function App({ Component, pageProps }) {
+const MangoStoreUpdater = () => {
   useHydrateStore()
   useWallet()
+
+  return null
+}
+
+const PageTitle = () => {
+  const router = useRouter()
   const marketConfig = useMangoStore((s) => s.selectedMarket.config)
   const market = useMangoStore((s) => s.selectedMarket.current)
   const oraclePrice = useOraclePrice()
-  const router = useRouter()
   const selectedMarketName = marketConfig.name
   const marketTitleString =
-    marketConfig && router.pathname.includes('[market]')
+    marketConfig && router.pathname.includes('market')
       ? `${
           oraclePrice
             ? oraclePrice.toFixed(getDecimalCount(market?.tickSize)) + ' | '
@@ -33,9 +38,17 @@ function App({ Component, pageProps }) {
       : ''
 
   return (
+    <Head>
+      <title>{marketTitleString}Mango Markets</title>
+    </Head>
+  )
+}
+
+function App({ Component, pageProps }) {
+  return (
     <>
       <Head>
-        <title>{marketTitleString}Mango Markets</title>
+        <title>Mango Markets</title>
         <link rel="preconnect" href="https://fonts.gstatic.com" />
         <link
           href="https://fonts.googleapis.com/css2?family=Lato:wght@300;400;700&display=swap"
@@ -72,6 +85,8 @@ function App({ Component, pageProps }) {
 
         <link rel="manifest" href="/manifest.json"></link>
       </Head>
+      <PageTitle />
+      <MangoStoreUpdater />
       <ThemeProvider defaultTheme="Mango">
         <ViewportProvider>
           <div className="bg-th-bkg-1">

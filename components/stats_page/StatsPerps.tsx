@@ -98,18 +98,7 @@ export default function StatsPerps({ perpStats }) {
 
   return (
     <>
-      <div className="flex items-center justify-between mb-4 w-full">
-        <div className="flex items-center text-xl text-th-fgd-1">
-          <img
-            width="24"
-            height="24"
-            src={`/assets/icons/${selectedAsset
-              .split(/-|\//)[0]
-              .toLowerCase()}.svg`}
-            className="mr-2.5"
-          />
-          {selectedAsset.split(/-|\//)[0]} {t('perpetual-futures')}
-        </div>
+      <div className="flex flex-row-reverse items-center md:items-stretch justify-between md:flex-col mb-4">
         <Select
           value={selectedAsset}
           onChange={(a) => setSelectedAsset(a)}
@@ -129,22 +118,35 @@ export default function StatsPerps({ perpStats }) {
             ))}
           </div>
         </Select>
-        <div className="hidden md:flex space-x-2">
-          {marketConfigs.map((market) => (
+        <div className="bg-th-bkg-3 hidden md:flex mb-4 md:mb-6 md:-mt-6 md:-mx-6 px-3 md:px-4 py-2 rounded-md md:rounded-none md:rounded-t-md">
+          {marketConfigs.map((market, index) => (
             <div
-              className={`bg-th-bkg-3 cursor-pointer default-transition px-2 py-1 rounded-md text-center w-full whitespace-nowrap
-              ${
-                selectedAsset === market.name
-                  ? `ring-1 ring-inset ring-th-primary text-th-primary`
-                  : `text-th-fgd-1 opacity-50 hover:opacity-100`
-              }
-            `}
+              className={`md:px-2 py-1 text-xs md:text-sm ${
+                index > 0 ? 'ml-4 md:ml-2' : null
+              } rounded-md cursor-pointer default-transition
+                          ${
+                            selectedAsset === market.name
+                              ? `text-th-primary`
+                              : `text-th-fgd-3 hover:text-th-fgd-1`
+                          }
+                        `}
               onClick={() => setSelectedAsset(market.name)}
               key={market.name as string}
             >
-              {market.name.slice(0, -5)}
+              {market.baseSymbol}
             </div>
           ))}
+        </div>
+        <div className="flex items-center text-xl text-th-fgd-1">
+          <img
+            width="24"
+            height="24"
+            src={`/assets/icons/${selectedAsset
+              .split(/-|\//)[0]
+              .toLowerCase()}.svg`}
+            className="mr-2.5"
+          />
+          {selectedAsset.split(/-|\//)[0]} {t('perpetual-futures')}
         </div>
       </div>
       <div className="grid grid-flow-row grid-cols-1 grid-rows-2 md:grid-cols-2 md:grid-rows-2 gap-2 sm:gap-4">
@@ -186,9 +188,9 @@ export default function StatsPerps({ perpStats }) {
           />
         </div>
         <div className="border border-th-bkg-4 relative p-4 rounded-md">
-          <div className="text-lg">Liquidity Mining</div>
+          <div className="text-lg">{t('liquidity-mining')}</div>
           <div className="flex justify-between mt-4">
-            <div>Depth Rewarded</div>
+            <div>{t('depth-rewarded')}</div>
             <div>
               {maxDepthUi.toLocaleString() +
                 ' ' +
@@ -196,17 +198,17 @@ export default function StatsPerps({ perpStats }) {
             </div>
           </div>
           <div className="flex justify-between mt-4">
-            <div>Target Period Length</div>
+            <div>{t('target-period-length')}</div>
             <div>
               {(
                 selectedMarket.liquidityMiningInfo.targetPeriodLength.toNumber() /
                 60
               ).toFixed()}{' '}
-              mins
+              {t('minutes')}
             </div>
           </div>
           <div className="flex justify-between mt-4">
-            <div>MNGO Per Period</div>
+            <div>{t('mngo-per-period')}</div>
             <div>
               {(
                 selectedMarket.liquidityMiningInfo.mngoPerPeriod.toNumber() /
@@ -215,7 +217,7 @@ export default function StatsPerps({ perpStats }) {
             </div>
           </div>
           <div className="flex justify-between mt-4">
-            <div>MNGO Left In Period</div>
+            <div>{t('mngo-left-period')}</div>
             <div>
               {(
                 selectedMarket.liquidityMiningInfo.mngoLeft.toNumber() /
@@ -225,11 +227,11 @@ export default function StatsPerps({ perpStats }) {
           </div>
 
           <div className="flex justify-between mt-4">
-            <div>Est Period End</div>
+            <div>{t('est-period-end')}</div>
             <div>{new Date(est * 1000).toUTCString()}</div>
           </div>
           <div className="flex justify-between mt-4">
-            <div>Period Progress</div>
+            <div>{t('period-progress')}</div>
             <div>{(progress * 100).toFixed(2)}%</div>
           </div>
         </div>

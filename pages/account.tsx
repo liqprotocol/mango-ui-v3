@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   CurrencyDollarIcon,
   DuplicateIcon,
+  ExclamationCircleIcon,
   ExternalLinkIcon,
   LinkIcon,
   PencilIcon,
@@ -155,9 +156,9 @@ export default function Account() {
                 <h1
                   className={`font-semibold mb-1 mr-3 text-th-fgd-1 text-2xl`}
                 >
-                  {mangoAccount?.name || 'Account'}
+                  {mangoAccount?.name || t('account')}
                 </h1>
-                <div className="flex items-center pb-0.5 text-th-fgd-3 ">
+                <div className="flex items-center text-th-fgd-3 ">
                   <span className="text-xxs sm:text-xs">
                     {mangoAccount.publicKey.toString()}
                   </span>
@@ -168,6 +169,10 @@ export default function Account() {
                   {isCopied ? (
                     <div className="ml-2 text-th-fgd-2 text-xs">Copied!</div>
                   ) : null}
+                </div>
+                <div className="flex items-center text-th-red text-xxs">
+                  <ExclamationCircleIcon className="h-4 mr-1.5 w-4" />
+                  {t('account-address-warning')}
                 </div>
               </div>
               <div className="grid grid-cols-3 grid-rows-1 gap-2">
@@ -209,12 +214,12 @@ export default function Account() {
           ) : (
             <div className="pb-2 pt-3">
               <Select
-                value={TABS[viewIndex]}
+                value={t(TABS[viewIndex].toLowerCase())}
                 onChange={(e) => handleChangeViewIndex(e)}
               >
                 {TABS.map((tab, index) => (
                   <Select.Option key={index + tab} value={index}>
-                    {tab}
+                    {t(tab.toLowerCase())}
                   </Select.Option>
                 ))}
               </Select>
@@ -254,10 +259,10 @@ export default function Account() {
               </div>
             ) : (
               <EmptyState
-                buttonText="Create Account"
+                buttonText={t('create-account')}
                 icon={<CurrencyDollarIcon />}
                 onClickButton={() => setShowAccountsModal(true)}
-                title="No Account Found"
+                title={t('no-account-found')}
               />
             )
           ) : (

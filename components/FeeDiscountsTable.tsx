@@ -17,6 +17,7 @@ import { useState } from 'react'
 const FeeDiscountsTable = () => {
   const { t } = useTranslation('common')
   const mangoAccount = useMangoStore((s) => s.selectedMangoAccount.current)
+  const connected = useMangoStore((s) => s.wallet.connected)
   const walletTokens = useMangoStore((s) => s.wallet.tokens)
   const { totalSrm, totalMsrm, rates } = useSrmAccount()
   const [showDeposit, setShowDeposit] = useState(false)
@@ -29,7 +30,7 @@ const FeeDiscountsTable = () => {
 
   return (
     <div
-      className={`flex justify-center bg-th-bkg-1 py-6 mt-6 rounded-md divide-x divide-gray-500`}
+      className={`flex justify-center bg-th-bkg-1 py-6 rounded-md divide-x divide-gray-500`}
     >
       <div className="pr-10">
         <div className="text-center text-lg">{t('serum-fees')}</div>
@@ -74,11 +75,17 @@ const FeeDiscountsTable = () => {
               </div>
             </div>
             <div className="text-th-fgd-3 text-normal">
-              {rates ? percentFormat.format(rates.takerWithRebate) : null}
+              {rates
+                ? new Intl.NumberFormat(undefined, {
+                    style: 'percent',
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 3,
+                  }).format(rates.takerWithRebate)
+                : null}
             </div>
           </div>
         </div>
-        {mangoAccount ? (
+        {connected && mangoAccount ? (
           <div className="flex justify-center mt-6">
             <Button
               onClick={() => setShowDeposit(true)}
